@@ -76,7 +76,7 @@ fn deinitialize(_ctx: &Context) -> Status {
     arity: 3,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadOnly, Access],
     }],
 })]
@@ -94,7 +94,7 @@ fn bloom_exists_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult 
     arity: -3,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadOnly, Access],
     }],
 })]
@@ -105,14 +105,14 @@ fn bloom_mexists_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult
 /// Command handler for BF.ADD <key> <item>
 #[valkey_command({
     name: "BF.ADD",
-    summary: "Add a single item to a bloom filter; creates the filter if it does not exist",
+    summary: "Add a single item to a bloom filter. The bloom filter is created if it doesn't exist",
     complexity: "O(N), where N is the number of hash functions used by the bloom filter.",
     since: "1.0.0",
     flags: [Write, DenyOOM, Fast],
     arity: 3,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadWrite, Insert],
     }],
 })]
@@ -123,14 +123,14 @@ fn bloom_add_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult {
 /// Command handler for BF.MADD <key> <item> [<item> ...]
 #[valkey_command({
     name: "BF.MADD",
-    summary: "Add one or more items to a bloom filter; creates the filter if it does not exist",
+    summary: "Adds one or more items to a bloom filter. The bloom filter is created if it doesn't exist",
     complexity: "O(N * K), where N is the number of hash functions used by the bloom filter and K is the number of items being added",
     since: "1.0.0",
     flags: [Write, DenyOOM, Fast],
     arity: -3,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadWrite, Insert],
     }],
 })]
@@ -148,7 +148,7 @@ fn bloom_madd_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult {
     arity: 2,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadOnly, Access],
     }],
 })]
@@ -166,7 +166,7 @@ fn bloom_card_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult {
     arity: -4,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadWrite, Insert],
     }],
 })]
@@ -184,7 +184,7 @@ fn bloom_reserve_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult
     arity: -2,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadOnly, Access],
     }],
 })]
@@ -203,7 +203,7 @@ fn bloom_info_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult {
     arity: -2,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadWrite, Insert],
     }],
 })]
@@ -215,14 +215,14 @@ fn bloom_insert_command(ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult 
 /// BF.LOAD <key> data
 #[valkey_command({
     name: "BF.LOAD",
-    summary: "Restores a bloom filter from a dump payload in a single operation",
+    summary: "Restores a bloom filter in a single operation. The command is only generated during AOF Rewrite of bloom filters",
     complexity: "O(N), where N is the capacity",
     since: "1.0.0",
     flags: [Write, DenyOOM],
     arity: 3,
     key_spec: [{
         begin_search: Index({ index: 1 }),
-        find_keys: Range({ last_key: 1, steps: 1, limit: 0 }),
+        find_keys: Range({ last_key: 0, steps: 1, limit: 0 }),
         flags: [ReadWrite, Insert],
     }],
 })]

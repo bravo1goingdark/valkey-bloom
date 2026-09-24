@@ -17,16 +17,85 @@ class TestBloomCommand(ValkeyBloomTestCaseBase):
         self.verify_command_arity('BF.RESERVE', -4)
         self.verify_command_arity('BF.INFO', -2)
         self.verify_command_arity('BF.INSERT', -2)
+        self.verify_command_arity('BF.LOAD', 3)
 
-    def test_bloom_command_keyspecs_present(self):
-        commands_with_keys = ['BF.ADD', 'BF.EXISTS', 'BF.INSERT', 'BF.RESERVE']
-        for command in commands_with_keys:
-            command_info = self.client.execute_command('COMMAND', 'INFO', command)
-            spec = command_info.get(command)
-            assert spec is not None, f"No command info returned for {command}"
-            key_specs = spec.get('key_specifications')
-            assert key_specs, f"Key specs missing for {command}"
-            assert len(key_specs) >= 1, f"Expected at least one key spec for {command}"
+    # Every bloom filter command touches exactly one key, the <key> argument at index 1.
+    # A range of (0, 1, 0) therefore describes that single key, the same way SET does.
+    # See https://valkey.io/topics/key-specs/
+    EXPECTED_BLOOM_KEYSPECS = {
+        'BF.ADD': {'RW', 'insert'},
+        'BF.MADD': {'RW', 'insert'},
+        'BF.EXISTS': {'RO', 'access'},
+        'BF.MEXISTS': {'RO', 'access'},
+        'BF.CARD': {'RO', 'access'},
+        'BF.RESERVE': {'RW', 'insert'},
+        'BF.INFO': {'RO', 'access'},
+        'BF.INSERT': {'RW', 'insert'},
+        'BF.LOAD': {'RW', 'insert'},
+    }
+
+    @staticmethod
+    def as_key_spec_map(value):
+        # COMMAND INFO returns maps as flat key/value lists over RESP2 and as maps over RESP3.
+        if isinstance(value, dict):
+            return {(key.decode() if isinstance(key, bytes) else key): val for key, val in value.items()}
+        assert isinstance(value, list) and len(value) % 2 == 0, f"Unexpected key spec map: {value!r}"
+        return {
+            (value[i].decode() if isinstance(value[i], bytes) else value[i]): value[i + 1]
+            for i in range(0, len(value), 2)
+        }
+
+    @staticmethod
+    def as_string_set(values):
+        return {value.decode() if isinstance(value, bytes) else value for value in values}
+
+    @staticmethod
+    def as_string(value):
+        return value.decode() if isinstance(value, bytes) else value
+
+    def verify_command_keyspec(self, command, expected_flags):
+        command_info = self.client.execute_command('COMMAND', 'INFO', command)
+        info = command_info.get(command)
+        assert info is not None, f"No command info returned for {command}"
+
+        # The legacy first/last key/step fields must describe the single bloom filter key.
+        assert info.get('first_key_pos') == 1, \
+            f"first_key_pos for '{command}' is {info.get('first_key_pos')}, expected 1"
+        assert info.get('last_key_pos') == 1, \
+            f"last_key_pos for '{command}' is {info.get('last_key_pos')}, expected 1"
+        assert info.get('step_count') == 1, \
+            f"step_count for '{command}' is {info.get('step_count')}, expected 1"
+
+        key_specs = info.get('key_specifications')
+        assert key_specs, f"Key specs missing for {command}"
+        assert len(key_specs) == 1, f"Expected exactly one key spec for {command}, got {len(key_specs)}"
+
+        key_spec = self.as_key_spec_map(key_specs[0])
+
+        flags = self.as_string_set(key_spec['flags'])
+        assert flags == expected_flags, \
+            f"Key spec flags for '{command}' are {sorted(flags)}, expected {sorted(expected_flags)}"
+
+        begin_search = self.as_key_spec_map(key_spec['begin_search'])
+        assert self.as_string(begin_search['type']) == 'index', \
+            f"begin_search type for '{command}' is {begin_search['type']}, expected 'index'"
+        assert self.as_key_spec_map(begin_search['spec'])['index'] == 1, \
+            f"begin_search index for '{command}' must be 1 (the <key> argument)"
+
+        find_keys = self.as_key_spec_map(key_spec['find_keys'])
+        assert self.as_string(find_keys['type']) == 'range', \
+            f"find_keys type for '{command}' is {find_keys['type']}, expected 'range'"
+        range_spec = self.as_key_spec_map(find_keys['spec'])
+        assert range_spec['lastkey'] == 0, \
+            f"lastkey for '{command}' is {range_spec['lastkey']}, expected 0 (a single key)"
+        assert range_spec['keystep'] == 1, \
+            f"keystep for '{command}' is {range_spec['keystep']}, expected 1"
+        assert range_spec['limit'] == 0, \
+            f"limit for '{command}' is {range_spec['limit']}, expected 0"
+
+    def test_bloom_command_keyspecs(self):
+        for command, expected_flags in self.EXPECTED_BLOOM_KEYSPECS.items():
+            self.verify_command_keyspec(command, expected_flags)
 
     def test_bloom_command_error(self):
         # test set up
